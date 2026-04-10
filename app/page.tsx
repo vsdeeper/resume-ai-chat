@@ -1,65 +1,248 @@
-import Image from "next/image";
+"use client";
+
+import {
+  AntDesignOutlined,
+  BulbOutlined,
+  CheckCircleOutlined,
+  LoadingOutlined,
+  ProfileOutlined,
+  UserOutlined,
+} from "@ant-design/icons";
+import {
+  Bubble,
+  type BubbleItemType,
+  Conversations,
+  Prompts,
+  Sender,
+  Suggestion,
+  ThoughtChain,
+  XProvider,
+} from "@ant-design/x";
+import { Avatar, Card, Divider, Flex, Skeleton } from "antd";
+import { useState, useEffect } from "react";
+
+import { useRef } from "react";
 
 export default function Home() {
+  const idRef = useRef(0);
+  const getKey = () => `bubble_${idRef.current++}`;
+  const [value, setValue] = useState("");
+  const [initializing, setInitializing] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [messages, setMessages] = useState<BubbleItemType[]>([
+    {
+      key: getKey(),
+      role: "ai",
+      content: "基于本地知识库的信息检索，您想问什么呢？",
+    },
+  ]);
+
+  useEffect(() => {
+    const initKnowledgeBase = async () => {
+      try {
+        const res = await fetch("/api/ingest");
+        await res.json();
+      } catch (error) {
+        console.error("初始化知识库失败:", error);
+      } finally {
+        setInitializing(false);
+      }
+    };
+
+    initKnowledgeBase();
+  }, []);
+
+  const updateMessages = async (userMessage: string) => {
+    try {
+      setLoading(true);
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: userMessage }),
+      });
+      const data = await res.json();
+      setMessages((prev) => {
+        const newMessages = [...prev];
+        newMessages[newMessages.length - 1] = {
+          ...newMessages[newMessages.length - 1],
+          content: data.answer,
+          loading: false,
+          typing: true,
+        };
+        return newMessages;
+      });
+    } catch (error) {
+      console.error("发送消息失败:", error);
+      setMessages((prev) => {
+        const newMessages = [...prev];
+        newMessages[newMessages.length - 1] = {
+          ...newMessages[newMessages.length - 1],
+          content: "AI请求失败，请重试",
+          loading: false,
+          typing: true,
+        };
+        return newMessages;
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!value.trim()) return;
+
+    const userMessage = value.trim();
+    setMessages((prev) => [
+      ...prev,
+      {
+        key: getKey(),
+        role: "user",
+        content: userMessage,
+      },
+      {
+        key: getKey(),
+        role: "ai",
+        content: "",
+        loading: true,
+      },
+    ]);
+    setValue("");
+    updateMessages(userMessage);
+  };
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+    <>
+      <Flex flex={1} gap={12} vertical style={{ padding: 30 }}>
+        <Card
+          style={{ display: "flex", flex: 1 }}
+          styles={{ body: { display: "flex", flex: 1 } }}
+        >
+          <XProvider>
+            <Flex gap={12} flex={1}>
+              <Conversations
+                style={{ width: 200 }}
+                defaultActiveKey="1"
+                items={[
+                  {
+                    key: "1",
+                    label: "简历信息库",
+                    icon: <ProfileOutlined />,
+                  },
+                ]}
+              />
+              <Divider orientation="vertical" style={{ height: "auto" }} />
+              <Flex vertical justify="space-between" style={{ flex: 1 }}>
+                {initializing ? (
+                  <div style={{ width: "100%" }}>
+                    <Skeleton active paragraph={{ rows: 8 }} />
+                  </div>
+                ) : (
+                  <>
+                    <Bubble.List
+                      role={{
+                        ai: () => ({
+                          typing: true,
+                          header: "AI",
+                          avatar: () => <Avatar icon={<AntDesignOutlined />} />,
+                        }),
+                        user: (data) => ({
+                          placement: "end",
+                          typing: false,
+                          header: `User-${data.key}`,
+                          avatar: () => <Avatar icon={<UserOutlined />} />,
+                        }),
+                      }}
+                      items={messages}
+                      style={{ height: "calc(100vh - 250px)" }}
+                    />
+                    <Flex vertical gap={12}>
+                      <Prompts
+                        items={[
+                          {
+                            key: "1",
+                            label: "工作几年了？",
+                            icon: <BulbOutlined style={{ color: "#FFD700" }} />,
+                            disabled: loading,
+                          },
+                          {
+                            key: "2",
+                            label: "工作了几家公司？",
+                            icon: <BulbOutlined style={{ color: "#FFD700" }} />,
+                            disabled: loading,
+                          },
+                        ]}
+                        onItemClick={({ data }) => {
+                          const userMessage = data.label as string;
+                          setMessages((prev) => [
+                            ...prev,
+                            {
+                              key: getKey(),
+                              role: "user",
+                              content: userMessage,
+                            },
+                            {
+                              key: getKey(),
+                              role: "ai",
+                              content: "",
+                              loading: true,
+                            },
+                          ]);
+                          setValue("");
+                          updateMessages(userMessage);
+                        }}
+                      />
+                      <Suggestion
+                        items={[
+                          { label: "多少岁", value: "多少岁" },
+                          { label: "教育背景", value: "教育背景" },
+                        ]}
+                        onSelect={(value) => setValue(value)}
+                        disabled={loading}
+                      >
+                        {({ onTrigger, onKeyDown }) => {
+                          return (
+                            <Sender
+                              disabled={loading}
+                              value={value}
+                              onChange={(nextVal) => {
+                                if (nextVal === "/") {
+                                  onTrigger();
+                                } else if (!nextVal) {
+                                  onTrigger(false);
+                                }
+                                setValue(nextVal);
+                              }}
+                              onSubmit={handleSubmit}
+                              onKeyDown={onKeyDown}
+                              placeholder='输入 "/" 触发建议'
+                            />
+                          );
+                        }}
+                      </Suggestion>
+                    </Flex>
+                  </>
+                )}
+              </Flex>
+              <Divider orientation="vertical" style={{ height: "auto" }} />
+              <ThoughtChain
+                style={{ width: 200 }}
+                items={[
+                  {
+                    title: "初始化知识库",
+                    status: initializing ? "loading" : "success",
+                    description: initializing ? "初始化中..." : "已完成",
+                    icon: initializing ? (
+                      <LoadingOutlined />
+                    ) : (
+                      <CheckCircleOutlined />
+                    ),
+                  },
+                ]}
+              />
+            </Flex>
+          </XProvider>
+        </Card>
+      </Flex>
+    </>
   );
 }
