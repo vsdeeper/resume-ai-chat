@@ -52,7 +52,7 @@ pnpm dev
 
 ### 5. 访问应用
 
-打开浏览器访问 http://localhost:3000
+打开浏览器访问 <http://localhost:3000>
 
 ## 项目结构
 
@@ -75,7 +75,6 @@ pnpm dev
 ## 工作流程
 
 1. **初始化知识库**: 页面打开 → 自动调用 `/api/ingest` → 读取 `public/data/profile.pdf` → 分割文档 → 存入 ChromaDB → 完成后进入聊天界面
-
 2. **用户提问**: 用户输入/点击快捷提问 → 添加用户消息 → 添加空 AI 气泡 → 调用 `/api/chat` → 检索知识库 → 生成回答 → 更新 AI 气泡 → 更新思维链
 
 ## 配置说明
@@ -115,10 +114,3 @@ pnpm dev
 >
 ```
 
-## 截图
-
-![截图](./docs/screenshot.png)
-
-## License
-
-MIT
