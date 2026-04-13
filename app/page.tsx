@@ -11,6 +11,7 @@ import {
 import {
   Bubble,
   type BubbleItemType,
+  type ThoughtChainItemType,
   Conversations,
   Prompts,
   Sender,
@@ -20,6 +21,7 @@ import {
 } from "@ant-design/x";
 import { Avatar, Card, Divider, Flex, Skeleton } from "antd";
 import { useState, useEffect } from "react";
+import styles from "./page.module.css";
 
 import { useRef } from "react";
 
@@ -36,6 +38,15 @@ export default function Home() {
       content: "基于本地知识库的信息检索，您想问什么呢？",
     },
   ]);
+  const [thoughtChain, setThoughtChain] = useState<ThoughtChainItemType[]>([
+    {
+      key: "init",
+      title: "初始化知识库",
+      status: initializing ? "loading" : "success",
+      description: initializing ? "初始化中..." : "已完成",
+      icon: initializing ? <LoadingOutlined /> : <CheckCircleOutlined />,
+    },
+  ]);
 
   useEffect(() => {
     const initKnowledgeBase = async () => {
@@ -46,6 +57,15 @@ export default function Home() {
         console.error("初始化知识库失败:", error);
       } finally {
         setInitializing(false);
+        setThoughtChain([
+          {
+            key: "init",
+            title: "初始化知识库",
+            status: "success",
+            description: "已完成",
+            icon: <CheckCircleOutlined />,
+          },
+        ]);
       }
     };
 
@@ -55,11 +75,36 @@ export default function Home() {
   const updateMessages = async (userMessage: string) => {
     try {
       setLoading(true);
+
+      const startNow = new Date().toLocaleTimeString();
+      const retrievalKey = `retrieval_${idRef.current++}`;
+      const generateKey = `generate_${idRef.current++}`;
+      setThoughtChain((prev) => [
+        ...prev,
+        {
+          key: retrievalKey,
+          title: "检索知识库",
+          status: "loading",
+          description: `${startNow} 正在查找相关文档`,
+          icon: <LoadingOutlined />,
+        },
+        {
+          key: generateKey,
+          title: "生成回答",
+          status: "loading",
+          description: `${startNow} 正在流式输出`,
+          icon: <LoadingOutlined />,
+        },
+      ]);
+
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: userMessage }),
       });
+
+      const retrievedDocs = res.headers.get("X-Retrieved-Docs");
+      const docCount = retrievedDocs ? parseInt(retrievedDocs, 10) : 0;
 
       if (!res.body) {
         throw new Error("No response body");
@@ -78,6 +123,26 @@ export default function Home() {
           typing: true,
         };
         return newMessages;
+      });
+
+      const nowRetrieval = new Date().toLocaleTimeString();
+      setThoughtChain((prev) => {
+        const newChain = [...prev];
+        const retrievalIndex = newChain.length - 2;
+        const item = newChain[retrievalIndex];
+        newChain[retrievalIndex] = {
+          ...item,
+          status: "success",
+          description: (
+            <>
+              {item.description}
+              <br />
+              {nowRetrieval} 找到 {docCount} 篇相关文档
+            </>
+          ),
+          icon: <CheckCircleOutlined />,
+        };
+        return newChain;
       });
 
       while (true) {
@@ -106,6 +171,26 @@ export default function Home() {
         };
         return newMessages;
       });
+
+      const now = new Date().toLocaleTimeString();
+      setThoughtChain((prev) => {
+        const newChain = [...prev];
+        const generateIndex = newChain.length - 1;
+        const item = newChain[generateIndex];
+        newChain[generateIndex] = {
+          ...item,
+          status: "success",
+          description: (
+            <>
+              {item.description}
+              <br />
+              {now} 回答生成完成
+            </>
+          ),
+          icon: <CheckCircleOutlined />,
+        };
+        return newChain;
+      });
     } catch (error) {
       console.error("发送消息失败:", error);
       setMessages((prev) => {
@@ -117,6 +202,24 @@ export default function Home() {
           typing: true,
         };
         return newMessages;
+      });
+      const now = new Date().toLocaleTimeString();
+      setThoughtChain((prev) => {
+        const newChain = [...prev];
+        const lastIndex = newChain.length - 1;
+        const item = newChain[lastIndex];
+        newChain[lastIndex] = {
+          ...item,
+          status: "error",
+          description: (
+            <>
+              {item.description}
+              <br />
+              {now} 生成失败
+            </>
+          ),
+        };
+        return newChain;
       });
     } finally {
       setLoading(false);
@@ -261,19 +364,13 @@ export default function Home() {
               </Flex>
               <Divider orientation="vertical" style={{ height: "auto" }} />
               <ThoughtChain
-                style={{ width: 200 }}
-                items={[
-                  {
-                    title: "初始化知识库",
-                    status: initializing ? "loading" : "success",
-                    description: initializing ? "初始化中..." : "已完成",
-                    icon: initializing ? (
-                      <LoadingOutlined />
-                    ) : (
-                      <CheckCircleOutlined />
-                    ),
-                  },
-                ]}
+                style={{
+                  width: 200,
+                  overflow: "auto",
+                  height: "calc(100vh - 120px)",
+                }}
+                classNames={{ itemHeader: styles.itemHeader }}
+                items={thoughtChain}
               />
             </Flex>
           </XProvider>

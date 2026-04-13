@@ -57,8 +57,8 @@ export async function POST(req: Request) {
   // 构建执行链 (Chain)
   const chain = RunnableSequence.from([
     {
-      context: () => contextText, // 传入检索到的上下文
-      question: () => message, // 传入用户问题
+      context: () => contextText,
+      question: () => message,
     },
     prompt,
     model,
@@ -67,9 +67,11 @@ export async function POST(req: Request) {
   // 流式生成回答
   const stream = await chain.stream({});
 
+  // 转换为 Web ReadableStream，在开头加入思维链信息标记
   const textStream = new ReadableStream({
     async start(controller) {
       const encoder = new TextEncoder();
+      
       for await (const chunk of stream) {
         if (typeof chunk.content === "string") {
           controller.enqueue(encoder.encode(chunk.content));
@@ -79,11 +81,13 @@ export async function POST(req: Request) {
     },
   });
 
+  // 在响应头中带上检索到的文档数量，用于思维链显示
   return new Response(textStream, {
     headers: {
       "Content-Type": "text/plain; charset=utf-8",
       "Cache-Control": "no-cache",
-      Connection: "keep-alive",
+      "Connection": "keep-alive",
+      "X-Retrieved-Docs": String(relevantDocs.length),
     },
   });
 }
