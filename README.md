@@ -31,11 +31,11 @@ docker-compose up -d
 
 ### 2. 配置环境变量
 
-创建 `.env` 文件：
+创建 `.env.local` 文件：
 
 ```env
 # 硅基流动 API Key
-SILICONFLOW_API_KEY=your-api-key-here
+OPENAI_API_KEY=your-api-key-here
 ```
 
 ### 3. 安装依赖
@@ -61,7 +61,7 @@ pnpm dev
 ├── app/
 │   ├── api/
 │   │   ├── chat/
-│   │   │   └── route.ts       # AI 聊天接口
+│   │   │   └── route.ts       # AI 聊天接口（流式输出）
 │   │   └── ingest/
 │   │       └── route.ts      # 知识库初始化接口
 │   ├── globals.css
@@ -75,7 +75,7 @@ pnpm dev
 ## 工作流程
 
 1. **初始化知识库**: 页面打开 → 自动调用 `/api/ingest` → 读取 `public/data/profile.pdf` → 分割文档 → 存入 ChromaDB → 完成后进入聊天界面
-2. **用户提问**: 用户输入/点击快捷提问 → 添加用户消息 → 添加空 AI 气泡 → 调用 `/api/chat` → 检索知识库 → 生成回答 → 更新 AI 气泡 → 更新思维链
+2. **用户提问**: 用户输入/点击快捷提问 → 添加用户消息 → 添加空 AI 气泡 → 调用 `/api/chat` → 检索知识库 → 流式生成回答 → 逐字更新 AI 气泡
 
 ## 配置说明
 
@@ -110,7 +110,14 @@ pnpm dev
     { label: "姓名", value: "姓名" },
     { label: "学历", value: "学历" },
   ]}
-  onSelect={(value) => setValue(`[${value}]:`)}
+  onSelect={(value) => setValue(value)}
 >
 ```
 
+## 预览
+
+![预览](./public/preview.gif)
+
+> 流式输出效果展示，AI 回答逐字显示
+
+<br />
