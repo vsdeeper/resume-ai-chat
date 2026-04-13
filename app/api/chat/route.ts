@@ -1,12 +1,10 @@
-import { NextResponse } from "next/server";
 import { Chroma } from "@langchain/community/vectorstores/chroma";
 import { OpenAIEmbeddings } from "@langchain/openai";
 import { ChatOpenAI } from "@langchain/openai";
 import { PromptTemplate } from "@langchain/core/prompts";
-import { StringOutputParser } from "@langchain/core/output_parsers";
 import { RunnableSequence } from "@langchain/core/runnables";
 
-export async function POST(req) {
+export async function POST(req: Request) {
   const { message } = await req.json();
 
   // 初始化组件
@@ -33,7 +31,7 @@ export async function POST(req) {
   // 告诉 LLM 只能根据提供的上下文回答
   const prompt = PromptTemplate.fromTemplate(`
     你是一个智能助手。请仅根据以下参考资料回答用户的问题。
-    如果资料中没有答案，请直接说“我在知识库中没找到相关信息”。
+    如果资料中没有答案，请直接说"我在知识库中没找到相关信息"。
 
     参考资料:
     {context}
@@ -44,9 +42,6 @@ export async function POST(req) {
 
   // 初始化大模型
   const model = new ChatOpenAI({
-    // 替换为你的硅基流动 API Key，直接从.env文件中拾取
-    openAIApiKey: process.env.SILICONFLOW_API_KEY,
-
     // 指定你要用的模型名称 (例如: Qwen/Qwen2.5-72B-Instruct)
     modelName: "deepseek-ai/DeepSeek-V3.2",
 
@@ -56,6 +51,7 @@ export async function POST(req) {
     },
 
     temperature: 0,
+    streaming: true,
   });
 
   // 构建执行链 (Chain)
@@ -66,11 +62,28 @@ export async function POST(req) {
     },
     prompt,
     model,
-    new StringOutputParser(),
   ]);
 
-  // 生成回答
-  const response = await chain.invoke({});
+  // 流式生成回答
+  const stream = await chain.stream({});
 
-  return NextResponse.json({ answer: response });
+  const textStream = new ReadableStream({
+    async start(controller) {
+      const encoder = new TextEncoder();
+      for await (const chunk of stream) {
+        if (typeof chunk.content === "string") {
+          controller.enqueue(encoder.encode(chunk.content));
+        }
+      }
+      controller.close();
+    },
+  });
+
+  return new Response(textStream, {
+    headers: {
+      "Content-Type": "text/plain; charset=utf-8",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+    },
+  });
 }

@@ -54,7 +54,6 @@ export async function GET() {
     });
     // 只需要修改这两个参数，就能接入国内模型
     const embeddings = new OpenAIEmbeddings({
-      apiKey: process.env.SILICONFLOW_API_KEY,
       // 关键：指定国内平台的接口地址
       configuration: {
         baseURL: "https://api.siliconflow.cn/v1", // 例如硅基流动
