@@ -28,8 +28,8 @@ export async function GET() {
 
     // 文本分割 (核心步骤)
     const textSplitter = new RecursiveCharacterTextSplitter({
-      chunkSize: 1000, // 每块 1000 字符
-      chunkOverlap: 200, // 重叠 200 字符，保持语义连贯
+      chunkSize: 500, // 每块 1000 字符
+      chunkOverlap: 100, // 重叠 200 字符，保持语义连贯
     });
 
     // splitDocuments 会保留 metadata (如来源文件路径)

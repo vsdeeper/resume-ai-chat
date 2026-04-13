@@ -230,6 +230,7 @@ export default function Home() {
                         items={[
                           { label: "多少岁", value: "多少岁" },
                           { label: "教育背景", value: "教育背景" },
+                          { label: "项目经历", value: "项目经历" },
                         ]}
                         onSelect={(value) => setValue(value)}
                         disabled={loading}
